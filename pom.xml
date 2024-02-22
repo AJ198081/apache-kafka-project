@@ -15,6 +15,9 @@
 
     <name>apache-kafka-super-pom</name>
     <description>sandbox-for-kafka-practice</description>
+    <modules>
+        <module>kafka-basics</module>
+    </modules>
 
     <packaging>pom</packaging>
 
@@ -39,10 +42,10 @@
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
-        <dependency>
+       <!-- <dependency>
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-core</artifactId>
-        </dependency>
+        </dependency>-->
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

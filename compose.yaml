@@ -1,9 +1,113 @@
+networks:
+  kafka-tier:
+    driver: bridge
+
 services:
-  postgres:
-    image: 'postgres:latest'
-    environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+
+  kafka-1:
+    image: 'bitnami/kafka:3.6.1'
+    container_name: kafka_container_1
+    networks:
+      - kafka-tier
     ports:
-      - '5432'
+      - '9092:9092'
+    #      - '9093:9093' No need to expose the 'kraft controller', it is used internally, instead have all brokers on same network
+    #      - '9094:9094'
+    labels:
+      org.springframework.boot.readiness-check.tcp.disable: true
+    environment:
+      - KAFKA_BROKER_ID=101
+
+      - KAFKA_CFG_NODE_ID=101
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=101@kafka-1:9093,201@kafka-2:9093,301@kafka-3:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      #     Listeners are what your kafka broker is internally listening to in 'docker'
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9094,CONTROLLER://:9093,EXTERNAL://:9092
+      #      So anyone within 'docker network - kafka-tier' trying to reach to kafka will do so at kafka-1:9094, and on localhost will connect to port 9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-1:9094,EXTERNAL://localhost:9092
+
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=kFBaxolMTnuvqcuBkZk47Q
+    #      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    volumes:
+      - .kafka/kafka-1:/bitnami/kafka
+    restart: no
+
+  kafka-2:
+    image: 'bitnami/kafka:3.6.1'
+    container_name: kafka_container_2
+    networks:
+      - kafka-tier
+    ports:
+      - '9095:9092'
+    #      - '9096:9093'
+    #      - '9097:9094'
+    labels:
+      org.springframework.boot.readiness-check.tcp.disable: true
+    environment:
+      - KAFKA_BROKER_ID=201
+      - KAFKA_CFG_NODE_ID=201
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=101@kafka-1:9093,201@kafka-2:9093,301@kafka-3:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9094,CONTROLLER://:9093,EXTERNAL://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-2:9094,EXTERNAL://localhost:9095
+
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=kFBaxolMTnuvqcuBkZk47Q
+    #      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    volumes:
+      - .kafka/kafka-2:/bitnami/kafka
+    restart: no
+
+  kafka-3:
+    image: 'bitnami/kafka:3.6.1'
+    container_name: kafka_container_3
+    networks:
+      - kafka-tier
+    ports:
+      - '9098:9092'
+    #      - '9099:9093'
+    #      - '10000:9094'
+    labels:
+      org.springframework.boot.readiness-check.tcp.disable: true
+    environment:
+      - KAFKA_BROKER_ID=301
+      - KAFKA_CFG_NODE_ID=301
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      #     https://rmoff.net/2018/08/02/kafka-listeners-explained/; LISTENERS are what interfaces (//IP:PORT) Kafka binds to. ADVERTISED_LISTENERS are how clients can connect.
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=101@kafka-1:9093,201@kafka-2:9093,301@kafka-3:9093
+
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9094,CONTROLLER://:9093,EXTERNAL://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-3:9094,EXTERNAL://localhost:9098
+
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=kFBaxolMTnuvqcuBkZk47Q
+    #      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    volumes:
+      - .kafka/kafka-3:/bitnami/kafka
+    restart: no
+
+
+#  postgres:
+#    image: 'postgres:latest'
+#    environment:
+#      - 'POSTGRES_DB=mydatabase'
+#      - 'POSTGRES_PASSWORD=secret'
+#      - 'POSTGRES_USER=myuser'
+#    ports:
+#      - '5432'
