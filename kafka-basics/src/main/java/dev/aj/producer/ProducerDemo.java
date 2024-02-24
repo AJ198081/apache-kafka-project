@@ -24,6 +24,8 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 @Slf4j
 public class ProducerDemo {
 
+    public static final String TOPIC = "user-created-topic-new";
+
     private static ProducerRecord<String, User> getUserProducerRecord() {
         User aj = User.builder().userId(UUID.randomUUID())
                       .name("AJ")
@@ -31,9 +33,9 @@ public class ProducerDemo {
                       .id(new Random().nextInt(1000, 10000))
                       .build();
 
-        ProducerRecord<String, User> produceAj = new ProducerRecord<>("user_created_topic", aj.getUserId().toString(),
-                                                                      aj);
-        return produceAj;
+        return new ProducerRecord<>(TOPIC,
+                                    aj.getUserId().toString(),
+                                    aj);
     }
 
     @SneakyThrows
@@ -50,7 +52,6 @@ public class ProducerDemo {
         }
 
         kafkaProducer.close();
-
     }
 
     private KafkaProducer<String, User> instantiateProducer() {
@@ -64,7 +65,7 @@ public class ProducerDemo {
         kafkaProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName());
         kafkaProperties.put(ProducerConfig.ACKS_CONFIG, "all");
-        kafkaProperties.put(ProducerConfig.BATCH_SIZE_CONFIG, 50);
+        kafkaProperties.put(ProducerConfig.BATCH_SIZE_CONFIG, 5);
 
         return new KafkaProducer<>(kafkaProperties);
     }
@@ -86,8 +87,6 @@ public class ProducerDemo {
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             log.info("Exception of type %s, with message %s".formatted(ex.getClass().toString(), ex.getMessage()));
             throw new RuntimeException(ex);
-        } finally {
-//            kafkaProducer.close();
         }
     }
 
@@ -97,13 +96,7 @@ public class ProducerDemo {
 
         kafkaProducer.send(userProducerRecord, (metadata, exception) -> {
             if (exception == null) {
-                log.info("Received metadata%n" +
-                                 "Key: %s" +
-                                 "Topic: %s%n" +
-                                 "Partition %s%n" +
-                                 "Offset %d%n" +
-                                 "Timestamp %d%n" +
-                                 ".".formatted(userProducerRecord.key(),
+                log.info("Received metadata%n Key: %s%n Topic: %s%n Partition %s%n Offset %d%n Timestamp %d".formatted(userProducerRecord.key(),
                                                metadata.topic(),
                                                metadata.partition(),
                                                metadata.offset(),
