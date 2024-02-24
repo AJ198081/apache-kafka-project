@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
@@ -21,18 +22,46 @@ public class ConsumerDemo {
 
     private static final String GROUP_ID = "user_created_consumer-1";
 
+    private static boolean continue_polling = true;
+
     public static void main(String[] args) {
 
         KafkaConsumer<String, User> kafkaConsumer = getKafkaConsumer();
 
-        kafkaConsumer.subscribe(Collections.singleton(ProducerDemo.TOPIC));
+        final Thread thread = Thread.currentThread();
 
-        ConsumerRecords<String, User> records = kafkaConsumer.poll(Duration.of(5, ChronoUnit.SECONDS));
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                log.info("Detected a shutdown, let's exit by calling consumer.wakeup()...");
+                kafkaConsumer.wakeup();
 
-        records.forEach(record -> {
-            User user = record.value();
-            log.info(STR."Received \{record.key()}, \{user}");
+                //join the main thread to allow the execution of the code in the main thread.
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         });
+
+        try {
+            kafkaConsumer.subscribe(Collections.singleton(ProducerDemo.TOPIC));
+            while (continue_polling) {
+                ConsumerRecords<String, User> records = kafkaConsumer.poll(Duration.of(5, ChronoUnit.SECONDS));
+
+                records.forEach(record -> {
+                    User user = record.value();
+                    log.info(STR."Received \{record.key()}, \{user}");
+                });
+            }
+        } catch (WakeupException e) {
+            // Expected exception, nothing to react to, as reaction will happen programmatically.
+            log.info("WakeupException is thrown when invoking 'wakefup()' on the consumer object");
+        } catch (Exception e) {
+            log.error("Unexpected exception during the consumer poll");
+        } finally {
+            kafkaConsumer.close(); // Tries to commit the current offset to Kraft, if possible.
+        }
 
     }
 
