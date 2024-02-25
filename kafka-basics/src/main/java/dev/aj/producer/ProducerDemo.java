@@ -1,6 +1,6 @@
 package dev.aj.producer;
 
-import dev.aj.producer.domain.User;
+import dev.aj.domain.User;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

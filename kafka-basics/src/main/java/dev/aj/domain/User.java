@@ -1,4 +1,4 @@
-package dev.aj.producer.domain;
+package dev.aj.domain;
 
 import java.util.UUID;
 import lombok.AllArgsConstructor;

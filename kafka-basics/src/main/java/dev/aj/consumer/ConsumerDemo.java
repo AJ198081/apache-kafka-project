@@ -1,7 +1,7 @@
 package dev.aj.consumer;
 
 import dev.aj.producer.ProducerDemo;
-import dev.aj.producer.domain.User;
+import dev.aj.domain.User;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -21,8 +21,6 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 public class ConsumerDemo {
 
     private static final String GROUP_ID = "user_created_consumer-1";
-
-    private static boolean continue_polling = true;
 
     public static void main(String[] args) {
 
@@ -46,6 +44,7 @@ public class ConsumerDemo {
 
         try {
             kafkaConsumer.subscribe(Collections.singleton(ProducerDemo.TOPIC));
+            boolean continue_polling = true;
             while (continue_polling) {
                 ConsumerRecords<String, User> records = kafkaConsumer.poll(Duration.of(5, ChronoUnit.SECONDS));
 
@@ -56,7 +55,7 @@ public class ConsumerDemo {
             }
         } catch (WakeupException e) {
             // Expected exception, nothing to react to, as reaction will happen programmatically.
-            log.info("WakeupException is thrown when invoking 'wakefup()' on the consumer object");
+            log.info("WakeupException is thrown when invoking 'wakeup()' on the consumer object");
         } catch (Exception e) {
             log.error("Unexpected exception during the consumer poll");
         } finally {
@@ -72,11 +71,15 @@ public class ConsumerDemo {
                                               .toList();
 
         JsonDeserializer<User> userJsonDeserializer = new JsonDeserializer<>();
-        userJsonDeserializer.addTrustedPackages("dev.aj.producer.domain");
+        userJsonDeserializer.addTrustedPackages("dev.aj.domain");
 
         kafkaProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         kafkaProperties.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
         kafkaProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        // Best way to optimise your Kafka cluster in general is to flash it up with minimum configuration,
+        // Determine from the log what you really need
+        kafkaProperties.put("partition.assignment.strategy",
+                            "org.apache.kafka.clients.consumer.CooperativeStickyAssignor");
 
         return new KafkaConsumer<>(kafkaProperties, new StringDeserializer(),
                                    userJsonDeserializer);
