@@ -85,8 +85,8 @@ services:
       - KAFKA_CFG_NODE_ID=301
       - KAFKA_ENABLE_KRAFT=yes
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
 
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
       #     https://rmoff.net/2018/08/02/kafka-listeners-explained/; LISTENERS are what interfaces (//IP:PORT) Kafka binds to. ADVERTISED_LISTENERS are how clients can connect.
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=101@kafka-1:9093,201@kafka-2:9093,301@kafka-3:9093
@@ -102,12 +102,27 @@ services:
       - .kafka/kafka-3:/bitnami/kafka
     restart: no
 
+  kakfa-schema-registry:
+    image: "bitnami/schema-registry:latest"
+    hostname: kafka-schema-registry
+    container_name: kafka_schema_registry
+    networks:
+      - kafka-tier
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    environment:
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
+      - SCHEMA_REGISTRY_KAFKA_BROKERS=PLAINTEXT://kafka-1:9094,PLAINTEXT://kafka-2:9094,PLAINTEXT://kafka-3:9094
 
-#  postgres:
-#    image: 'postgres:latest'
-#    environment:
-#      - 'POSTGRES_DB=mydatabase'
-#      - 'POSTGRES_PASSWORD=secret'
-#      - 'POSTGRES_USER=myuser'
-#    ports:
-#      - '5432'
+  postgres:
+    image: 'postgres:9-alpine'
+    environment:
+      - 'POSTGRES_DB=poon_jab'
+      - 'POSTGRES_PASSWORD=jab'
+      - 'POSTGRES_USER=poon'
+    ports:
+      - '5432:5432'

@@ -17,6 +17,7 @@
     <description>sandbox-for-kafka-practice</description>
     <modules>
         <module>kafka-basics</module>
+        <module>kafka-example</module>
     </modules>
 
     <packaging>pom</packaging>

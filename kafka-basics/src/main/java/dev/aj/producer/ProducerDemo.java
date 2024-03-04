@@ -66,6 +66,8 @@ public class ProducerDemo {
         kafkaProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName());
         kafkaProperties.put(ProducerConfig.ACKS_CONFIG, "all");
         kafkaProperties.put(ProducerConfig.BATCH_SIZE_CONFIG, 5);
+        kafkaProperties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 5);
+        kafkaProperties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
 
         return new KafkaProducer<>(kafkaProperties);
     }
