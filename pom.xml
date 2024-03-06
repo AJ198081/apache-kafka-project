@@ -18,6 +18,7 @@
     <modules>
         <module>kafka-basics</module>
         <module>kafka-example</module>
+        <module>kafka-opensearch-consumer</module>
     </modules>
 
     <packaging>pom</packaging>

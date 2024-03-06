@@ -21,6 +21,8 @@ import org.springframework.web.client.RestClient;
 @Slf4j
 public class CustomKafkaProducer {
 
+    public static final String TOPIC = "wikimedia-recent-change-v2";
+
     public static void main(String[] args) {
 
         CustomKafkaProducer customKafkaProducer = new CustomKafkaProducer();
@@ -52,7 +54,7 @@ public class CustomKafkaProducer {
 
     private void eventSourceConfig() {
 
-        final String TOPIC = "wikimedia-recent-change-v2";
+
 
         KafkaProducer<Long, WikiModel> producer = getProducer();
 
@@ -68,8 +70,8 @@ public class CustomKafkaProducer {
                                   new InputStreamReader(clientResponse.getBody()));
 
                           bufferedReader.lines()
+                                        .filter(line -> line.startsWith("data: "))
                                         .map(this::parseJson)
-                                        .filter(Objects::nonNull)
                                         .forEach(wikiModel -> {
                                             producer.send(new ProducerRecord<Long, WikiModel>(TOPIC,
                                                                                               wikiModel.getId(),
@@ -83,18 +85,10 @@ public class CustomKafkaProducer {
                   });
     }
 
-    private boolean filterLines(String s) {
-        return !(s.startsWith(":ok") || s.startsWith("event: message") || s.startsWith(System.lineSeparator()));
-    }
-
     @SneakyThrows
     private WikiModel parseJson(String input) {
-        if (input.startsWith("data: ")) {
             String data = input.split("data: ")[1];
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(data, WikiModel.class);
-        } else {
-            return null;
-        }
     }
 }
