@@ -1,5 +1,7 @@
 package dev.aj.opensearch;
 
+import com.carrotsearch.hppc.ObjectByteMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.aj.domain.model.WikiModel;
 import dev.aj.producer.CustomKafkaProducer;
 import java.io.IOException;
@@ -21,7 +23,6 @@ import org.apache.http.impl.client.DefaultConnectionKeepAliveStrategy;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
@@ -45,8 +46,8 @@ public class OpenSearchConsumer {
     public static void main(String[] args) {
         RestHighLevelClient openSearchClient = createOpenSearchClient();
 
-//        KafkaConsumer<Long, WikiModel> kafkaConsumer = createKafkaConsumer();
-        ConcurrentKafkaListenerContainerFactory<Long, WikiModel> listenerFactory = getListenerFactory();
+        ObjectMapper objectMapper = new ObjectMapper();
+
         DefaultKafkaConsumerFactory<Long, WikiModel> consumerFactory = getConsumerFactory();
         Consumer<Long, WikiModel> kafkaConsumer = consumerFactory.createConsumer("consumer-wikimedia", "version-1");
 
@@ -59,7 +60,7 @@ public class OpenSearchConsumer {
                 CreateIndexRequest createIndexRequest = new CreateIndexRequest(WIKIMEDIA);
                 RequestOptions aDefault = RequestOptions.DEFAULT;
                 CreateIndexResponse indexResponse = openSearchClient.indices()
-                                                                          .create(createIndexRequest, aDefault);
+                                                                    .create(createIndexRequest, aDefault);
 
                 indexResponse.index();
 
@@ -76,8 +77,9 @@ public class OpenSearchConsumer {
                 log.info("Received %d records".formatted(consumerRecords.count()));
 
                 consumerRecords.forEach(record -> {
-                    IndexRequest indexRequest = new IndexRequest(WIKIMEDIA).source(record.value(), XContentType.JSON);
                     try {
+                        IndexRequest indexRequest = new IndexRequest(WIKIMEDIA).source(objectMapper.writeValueAsString(record.value()),
+                                                                                       XContentType.JSON);
                         IndexResponse index = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
                         log.info("Index received post persists - %s".formatted(index));
 
@@ -93,21 +95,6 @@ public class OpenSearchConsumer {
 
     }
 
-    /*private static KafkaConsumer<Long, WikiModel> createKafkaConsumer() {
-        Map<String, Object> consumerProps = new HashMap<>();
-
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                          Stream.of("localhost:9092", "localhost:9095", "localhost:9098")
-                                .toList());
-        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-OpenSearch-demo");
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-
-        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
-        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-
-        return new KafkaConsumer<>(consumerProps);
-    }*/
-
     private static DefaultKafkaConsumerFactory<Long, WikiModel> getConsumerFactory() {
         JsonDeserializer<WikiModel> wikiModelJsonDeserializer = new JsonDeserializer<>();
         wikiModelJsonDeserializer.addTrustedPackages("*");
@@ -118,10 +105,7 @@ public class OpenSearchConsumer {
                           Stream.of("localhost:9092", "localhost:9095", "localhost:9098")
                                 .toList());
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-OpenSearch-demo");
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-
-        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
-        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         return new DefaultKafkaConsumerFactory<>(consumerProps, new LongDeserializer(), wikiModelJsonDeserializer);
     }

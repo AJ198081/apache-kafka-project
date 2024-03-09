@@ -45,8 +45,7 @@ public class CustomKafkaProducer {
         kafkaProperties.put(ProducerConfig.LINGER_MS_CONFIG, Integer.toString(50));
         kafkaProperties.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 1000);
         kafkaProperties.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, Integer.toString(1100));
-        kafkaProperties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION,
-                            5); // higher performance and keeps ordering
+        kafkaProperties.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 5); // higher performance and keeps ordering
         kafkaProperties.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true); // message gets delivered once
 
         return new KafkaProducer<>(kafkaProperties);

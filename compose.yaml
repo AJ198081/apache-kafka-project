@@ -36,7 +36,7 @@ services:
     #      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
     volumes:
       - .kafka/kafka-1:/bitnami/kafka
-    restart: no
+    restart: unless-stopped
 
   kafka-2:
     image: 'bitnami/kafka:3.6.1'
@@ -67,7 +67,7 @@ services:
     #      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
     volumes:
       - .kafka/kafka-2:/bitnami/kafka
-    restart: no
+    restart: unless-stopped
 
   kafka-3:
     image: 'bitnami/kafka:3.6.1'
@@ -100,7 +100,7 @@ services:
     #      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
     volumes:
       - .kafka/kafka-3:/bitnami/kafka
-    restart: no
+    restart: unless-stopped
 
   kakfa-schema-registry:
     image: "bitnami/schema-registry:latest"
