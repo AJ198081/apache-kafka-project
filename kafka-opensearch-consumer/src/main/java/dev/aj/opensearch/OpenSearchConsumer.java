@@ -1,6 +1,5 @@
 package dev.aj.opensearch;
 
-import com.carrotsearch.hppc.ObjectByteMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.aj.domain.model.WikiModel;
 import dev.aj.producer.CustomKafkaProducer;
@@ -75,24 +74,20 @@ public class OpenSearchConsumer {
             while (true) {
                 ConsumerRecords<Long, WikiModel> consumerRecords = kafkaConsumer.poll(Duration.ofMillis(3000));
                 log.info("Received %d records".formatted(consumerRecords.count()));
-
                 consumerRecords.forEach(record -> {
                     try {
                         IndexRequest indexRequest = new IndexRequest(WIKIMEDIA).source(objectMapper.writeValueAsString(record.value()),
                                                                                        XContentType.JSON);
                         IndexResponse index = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
                         log.info("Index received post persists - %s".formatted(index));
-
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 });
-
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     private static DefaultKafkaConsumerFactory<Long, WikiModel> getConsumerFactory() {
@@ -105,7 +100,7 @@ public class OpenSearchConsumer {
                           Stream.of("localhost:9092", "localhost:9095", "localhost:9098")
                                 .toList());
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-OpenSearch-demo");
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
 
         return new DefaultKafkaConsumerFactory<>(consumerProps, new LongDeserializer(), wikiModelJsonDeserializer);
     }
