@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +24,9 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.LongDeserializer;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.index.IndexRequest;
-import org.opensearch.action.index.IndexResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
@@ -60,11 +62,8 @@ public class OpenSearchConsumer {
                 RequestOptions aDefault = RequestOptions.DEFAULT;
                 CreateIndexResponse indexResponse = openSearchClient.indices()
                                                                     .create(createIndexRequest, aDefault);
-
                 indexResponse.index();
-
                 log.info("[%s] index has been created!!".formatted(WIKIMEDIA));
-
             } else {
                 log.info("[%s] index already exists!!".formatted(WIKIMEDIA));
             }
@@ -73,17 +72,42 @@ public class OpenSearchConsumer {
 
             while (true) {
                 ConsumerRecords<Long, WikiModel> consumerRecords = kafkaConsumer.poll(Duration.ofMillis(3000));
-                log.info("Received %d records".formatted(consumerRecords.count()));
+
+                log.info(STR."Received and about to process \{consumerRecords.count()} records");
+
+                BulkRequest bulkRequest = new BulkRequest();
+
                 consumerRecords.forEach(record -> {
                     try {
-                        IndexRequest indexRequest = new IndexRequest(WIKIMEDIA).source(objectMapper.writeValueAsString(record.value()),
-                                                                                       XContentType.JSON);
-                        IndexResponse index = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
-                        log.info("Index received post persists - %s".formatted(index));
+
+                        String id = STR."\{record.topic()}_\{record.partition()}_\{record.value().getMeta().getId()}";
+
+                        IndexRequest indexRequest = new IndexRequest(WIKIMEDIA)
+                                .source(objectMapper.writeValueAsString(record.value()), XContentType.JSON)
+                                .id(id);
+
+//                        To 'index' each record once.
+//                        IndexResponse index = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
+//                        log.info("Index received post persists ID: [%s]".formatted(index.getId()));
+
+//                        For bulk optimisation
+                        bulkRequest.add(indexRequest);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 });
+
+                if (bulkRequest.numberOfActions() > 0) {
+
+                    BulkResponse bulkResponse = openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+
+                    log.info(STR."Indexed a total of \{bulkResponse.getItems().length} indexes");
+
+                    //Commit offset
+                    kafkaConsumer.commitSync();
+                    log.info(STR."Offset has been committed for \{consumerRecords.count()} records");
+                    TimeUnit.SECONDS.sleep(5);
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -101,6 +125,7 @@ public class OpenSearchConsumer {
                                 .toList());
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-OpenSearch-demo");
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 
         return new DefaultKafkaConsumerFactory<>(consumerProps, new LongDeserializer(), wikiModelJsonDeserializer);
     }
